@@ -4,6 +4,10 @@ node_modules
 # Environment variables
 .env
 
+# Sensitive configuration files (local only)
+render-env-vars.txt
+text.txt
+
 # Logs
 logs
 *.log
