@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Airtable Integration App</title>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <script>
+      setTimeout(() => {
+        confetti({
+          particleCount: 100,
+          spread: 70,
+          origin: { y: 0.6 },
+          disableForReducedMotion: true
+        });
+      }, 500);
+    </script>
+    <style>
+      @import url("https://p.typekit.net/p.css?s=1&k=vnd5zic&ht=tk&f=39475.39476.39477.39478.39479.39480.39481.39482&a=18673890&app=typekit&e=css");
+      @font-face {
+        font-family: "neo-sans";
+        src: url("https://use.typekit.net/af/00ac0a/00000000000000003b9b2033/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("woff2"), url("https://use.typekit.net/af/00ac0a/00000000000000003b9b2033/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("woff"), url("https://use.typekit.net/af/00ac0a/00000000000000003b9b2033/27/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("opentype");
+        font-style: normal;
+        font-weight: 300;
+      }
+      html {
+        font-family: neo-sans;
+        font-weight: 300;
+        font-size: 16px;
+      }
+      body {
+        background: white;
+        margin: 0;
+        padding: 20px;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+      }
+      .header {
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .form-section {
+        background: #f5f5f5;
+        padding: 20px;
+        border-radius: 10px;
+        margin-bottom: 30px;
+      }
+      .form-group {
+        margin-bottom: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      input, textarea, select {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 14px;
+        box-sizing: border-box;
+      }
+      button {
+        background: #007bff;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        font-size: 14px;
+        margin-right: 10px;
+      }
+      button:hover {
+        background: #0056b3;
+      }
+      .records-section {
+        background: #f9f9f9;
+        padding: 20px;
+        border-radius: 10px;
+      }
+      .record {
+        background: white;
+        padding: 15px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        border-left: 4px solid #007bff;
+      }
+      .record h3 {
+        margin: 0 0 10px 0;
+        color: #333;
+      }
+      .record-actions {
+        margin-top: 10px;
+      }
+      .error {
+        color: red;
+        margin-top: 10px;
+      }
+      .success {
+        color: green;
+        margin-top: 10px;
+      }
+      .loading {
+        text-align: center;
+        padding: 20px;
+        color: #666;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="header">
+        <h1>🎉 Airtable Integration App</h1>
+        <p>Connecté à Airtable - Gérez vos données facilement !</p>
+      </div>
+
+      <!-- Formulaire pour ajouter des enregistrements -->
+      <div class="form-section">
+        <h2>Ajouter un nouvel enregistrement</h2>
+        <form id="addRecordForm">
+          <div class="form-group">
+            <label for="notes">Notes:</label>
+            <select id="notes" name="notes" required>
+              <option value="Note1">Note1</option>
+              <option value="A faire">A faire</option>
+              <option value="Fait">Fait</option>
+              <option value="En cours">En cours</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="status">Status:</label>
+            <select id="status" name="status" required>
+              <option value="FATIGUE">FATIGUE</option>
+            </select>
+          </div>
+          <button type="submit">Ajouter</button>
+          <button type="button" onclick="loadRecords()">Actualiser</button>
+        </form>
+        <div id="formMessage"></div>
+      </div>
+
+      <!-- Section d'affichage des enregistrements -->
+      <div class="records-section">
+        <h2>Enregistrements Airtable</h2>
+        <div id="recordsList">
+          <div class="loading">Chargement des enregistrements...</div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      // Charger les enregistrements au démarrage
+      document.addEventListener('DOMContentLoaded', function() {
+        loadRecords();
+      });
+
+      // Fonction pour obtenir la couleur du status
+      function getStatusColor(status) {
+        switch(status) {
+          case 'FATIGUE': return '#6c757d';
+          case 'ENERGIE': return '#28a745';
+          case 'NEUTRE': return '#17a2b8';
+          case 'HEUREUX': return '#ffc107';
+          case 'TRISTE': return '#dc3545';
+          default: return '#6c757d';
+        }
+      }
+
+      // Fonction pour formater la date
+      function formatDate(dateString) {
+        if (!dateString) return null;
+        const date = new Date(dateString);
+        return date.toLocaleDateString('fr-FR') + ' ' + date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+      }
+
+      // Fonction pour charger les enregistrements
+      async function loadRecords() {
+        try {
+          const response = await fetch('/api/records');
+          const records = await response.json();
+          
+          const recordsList = document.getElementById('recordsList');
+          
+          if (records.length === 0) {
+            recordsList.innerHTML = '<p>Aucun enregistrement trouvé.</p>';
+            return;
+          }
+          
+          recordsList.innerHTML = records.map(record => `
+            <div class="record" data-id="${record.id}">
+              <h3>${record.fields.Name || 'Sans nom'}</h3>
+              <p><strong>Notes:</strong> ${record.fields.Notes || 'Aucune note'}</p>
+              <p><strong>Status:</strong> <span style="background: ${getStatusColor(record.fields.Status)}; padding: 2px 8px; border-radius: 4px; color: white;">${record.fields.Status || 'N/A'}</span></p>
+              <p><strong>Dernière modification:</strong> ${formatDate(record.fields['Last Modified']) || 'N/A'}</p>
+              <p><strong>ID:</strong> ${record.id}</p>
+              <div class="record-actions">
+                <button onclick="deleteRecord('${record.id}')" style="background: #dc3545;">Supprimer</button>
+              </div>
+            </div>
+          `).join('');
+        } catch (error) {
+          console.error('Erreur:', error);
+          document.getElementById('recordsList').innerHTML = 
+            '<div class="error">Erreur lors du chargement des enregistrements. Vérifiez votre configuration Airtable.</div>';
+        }
+      }
+
+      // Gestionnaire de soumission du formulaire
+      document.getElementById('addRecordForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(e.target);
+        const fields = {
+          Notes: formData.get('notes'),
+          Status: formData.get('status')
+        };
+        
+        try {
+          const response = await fetch('/api/records', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ fields })
+          });
+          
+          if (response.ok) {
+            document.getElementById('formMessage').innerHTML = 
+              '<div class="success">Enregistrement ajouté avec succès!</div>';
+            e.target.reset();
+            loadRecords(); // Recharger la liste
+          } else {
+            throw new Error('Erreur lors de l\'ajout');
+          }
+        } catch (error) {
+          console.error('Erreur:', error);
+          document.getElementById('formMessage').innerHTML = 
+            '<div class="error">Erreur lors de l\'ajout de l\'enregistrement.</div>';
+        }
+      });
+
+      // Fonction pour supprimer un enregistrement
+      async function deleteRecord(recordId) {
+        if (!confirm('Êtes-vous sûr de vouloir supprimer cet enregistrement ?')) {
+          return;
+        }
+        
+        try {
+          const response = await fetch(`/api/records/${recordId}`, {
+            method: 'DELETE'
+          });
+          
+          if (response.ok) {
+            loadRecords(); // Recharger la liste
+          } else {
+            throw new Error('Erreur lors de la suppression');
+          }
+        } catch (error) {
+          console.error('Erreur:', error);
+          alert('Erreur lors de la suppression de l\'enregistrement.');
+        }
+      }
+    </script>
+  </body>
+</html>

@@ -1,8 +1,88 @@
 const express = require("express");
+const path = require("path");
+require("dotenv").config();
+const Airtable = require("airtable");
+
 const app = express();
 const port = process.env.PORT || 3001;
 
-app.get("/", (req, res) => res.type('html').send(html));
+// Configuration Airtable
+const base = new Airtable({
+  apiKey: process.env.AIRTABLE_API_KEY
+}).base(process.env.AIRTABLE_BASE_ID);
+
+// Middleware pour parser JSON
+app.use(express.json());
+app.use(express.static('.'));
+
+app.get("/", (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+
+// Routes API Airtable
+
+// GET - Récupérer tous les enregistrements
+app.get('/api/records', async (req, res) => {
+  try {
+    const records = [];
+    await base(process.env.AIRTABLE_TABLE_NAME).select({
+      view: 'Grid view'
+    }).eachPage((pageRecords, fetchNextPage) => {
+      pageRecords.forEach((record) => {
+        records.push({
+          id: record.id,
+          fields: record.fields
+        });
+      });
+      fetchNextPage();
+    });
+    res.json(records);
+  } catch (error) {
+    console.error('Erreur lors de la récupération des enregistrements:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération des données' });
+  }
+});
+
+// POST - Créer un nouvel enregistrement
+app.post('/api/records', async (req, res) => {
+  try {
+    const { fields } = req.body;
+    const record = await base(process.env.AIRTABLE_TABLE_NAME).create(fields);
+    res.json({
+      id: record.id,
+      fields: record.fields
+    });
+  } catch (error) {
+    console.error('Erreur lors de la création de l\'enregistrement:', error);
+    res.status(500).json({ error: 'Erreur lors de la création de l\'enregistrement' });
+  }
+});
+
+// PUT - Mettre à jour un enregistrement
+app.put('/api/records/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { fields } = req.body;
+    const record = await base(process.env.AIRTABLE_TABLE_NAME).update(id, fields);
+    res.json({
+      id: record.id,
+      fields: record.fields
+    });
+  } catch (error) {
+    console.error('Erreur lors de la mise à jour de l\'enregistrement:', error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour de l\'enregistrement' });
+  }
+});
+
+// DELETE - Supprimer un enregistrement
+app.delete('/api/records/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const deletedRecord = await base(process.env.AIRTABLE_TABLE_NAME).destroy(id);
+    res.json({ message: 'Enregistrement supprimé', id: deletedRecord.id });
+  } catch (error) {
+    console.error('Erreur lors de la suppression de l\'enregistrement:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression de l\'enregistrement' });
+  }
+});
 
 const server = app.listen(port, () => console.log(`Example app listening on port ${port}!`));
 
@@ -10,57 +90,3 @@ server.keepAliveTimeout = 120 * 1000;
 server.headersTimeout = 120 * 1000;
 
 // const confetti = require("canvas-confetti");
-
-const html = `
-<!DOCTYPE html>
-<html>
-  <head>
-    <title>Hello from Render!</title>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-    <script>
-      setTimeout(() => {
-        confetti({
-          particleCount: 100,
-          spread: 70,
-          origin: { y: 0.6 },
-          disableForReducedMotion: true
-        });
-      }, 500);
-    </script>
-    <style>
-      @import url("https://p.typekit.net/p.css?s=1&k=vnd5zic&ht=tk&f=39475.39476.39477.39478.39479.39480.39481.39482&a=18673890&app=typekit&e=css");
-      @font-face {
-        font-family: "neo-sans";
-        src: url("https://use.typekit.net/af/00ac0a/00000000000000003b9b2033/27/l?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("woff2"), url("https://use.typekit.net/af/00ac0a/00000000000000003b9b2033/27/d?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("woff"), url("https://use.typekit.net/af/00ac0a/00000000000000003b9b2033/27/a?primer=7cdcb44be4a7db8877ffa5c0007b8dd865b3bbc383831fe2ea177f62257a9191&fvd=n7&v=3") format("opentype");
-        font-style: normal;
-        font-weight: 700;
-      }
-      html {
-        font-family: neo-sans;
-        font-weight: 700;
-        font-size: calc(62rem / 16);
-      }
-      body {
-        background: white;
-      }
-      section {
-        border-radius: 1em;
-        padding: 1em;
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        margin-right: -50%;
-        transform: translate(-50%, -50%);
-      }
-    </style>
-  </head>
-  <body>
-    <section>
-      Hello from Render! Philippe!
-    </section>
-    <section>
-      C'est la fête !
-    </section>
-  </body>
-</html>
-`
