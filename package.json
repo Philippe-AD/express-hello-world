@@ -1,0 +1,12 @@
+{
+  "name": "mon-app-render",
+  "version": "1.0.0",
+  "description": "App Node prête pour Render",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.21.2"
+  }
+}
