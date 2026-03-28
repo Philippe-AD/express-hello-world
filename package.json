@@ -1,21 +1,12 @@
 {
-  "name": "express-hello-world",
+  "name": "mon-app-render",
   "version": "1.0.0",
-  "description": "Express Hello World on Render",
-  "main": "app.js",
-  "repository": "https://github.com/render-examples/express-hello-world",
-  "author": "Render Developers",
-  "license": "MIT",
-  "private": false,
+  "description": "App Node prête pour Render",
+  "main": "server.js",
   "scripts": {
-    "start": "node app.js"
+    "start": "node server.js"
   },
   "dependencies": {
-    "airtable": "^0.12.2",
-    "dotenv": "^17.2.3",
-    "express": "^4.18.2"
-  },
-  "engines": {
-    "node": ">=14"
+    "express": "^4.21.2"
   }
 }
