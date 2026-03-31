@@ -557,6 +557,25 @@
   let columns      = [];
   let rowsMap      = new Map();
   let editingId    = null;
+  let currentOffset = 0;
+  let totalRows     = 0;
+  const PAGE_SIZE   = 100;
+
+  /* ── Token API ─────────────────────────────────────────────────────────── */
+  function getToken() { return sessionStorage.getItem('api_token') || ''; }
+
+  function authHeaders(extra = {}) {
+    const t = getToken();
+    return t ? { 'Authorization': `Bearer ${t}`, ...extra } : { ...extra };
+  }
+
+  // Demander le token si absent
+  (function checkToken() {
+    if (!sessionStorage.getItem('api_token')) {
+      const t = prompt('Token API (laisser vide si mode dev local) :');
+      if (t) sessionStorage.setItem('api_token', t);
+    }
+  })();
 
   /* ── Toast ─────────────────────────────────────────────────────────────── */
   function toast(msg, type = 'info') {
@@ -592,7 +611,7 @@
   /* ── Charger la liste des tables ──────────────────────────────────────── */
   async function loadTables() {
     try {
-      const res = await fetch('/api/pg/tables');
+      const res = await fetch('/api/pg/tables', { headers: authHeaders() });
       if (!res.ok) throw new Error();
       const tables = await res.json();
       setConn('on');
@@ -617,7 +636,8 @@
 
   /* ── Sélectionner une table ───────────────────────────────────────────── */
   async function selectTable(name) {
-    currentTable = name;
+    currentTable  = name;
+    currentOffset = 0;
     document.querySelectorAll('.tbl-item').forEach(e => e.classList.remove('active'));
     document.getElementById(`ti-${name}`)?.classList.add('active');
     document.getElementById('tblName').textContent = name;
@@ -631,17 +651,21 @@
   }
 
   /* ── Charger les données ──────────────────────────────────────────────── */
-  async function loadData(name) {
+  async function loadData(name, offset = 0) {
+    currentOffset = offset;
     document.getElementById('content').innerHTML =
       '<div class="state"><div class="spinner"></div><p>Chargement…</p></div>';
     try {
+      const url = `/api/pg/${encodeURIComponent(name)}?limit=${PAGE_SIZE}&offset=${offset}`;
       const [rRows, rCols] = await Promise.all([
-        fetch(`/api/pg/${encodeURIComponent(name)}`),
-        fetch(`/api/pg/${encodeURIComponent(name)}/columns`),
+        fetch(url, { headers: authHeaders() }),
+        fetch(`/api/pg/${encodeURIComponent(name)}/columns`, { headers: authHeaders() }),
       ]);
-      allRows = await rRows.json();
-      columns = await rCols.json();
-      rowsMap = new Map(allRows.map(r => [String(r.id ?? r[Object.keys(r)[0]]), r]));
+      const data = await rRows.json();
+      columns  = await rCols.json();
+      allRows  = data.rows;
+      totalRows = data.total;
+      rowsMap  = new Map(allRows.map(r => [String(r.id ?? r[Object.keys(r)[0]]), r]));
       renderTable(allRows);
     } catch {
       document.getElementById('content').innerHTML =
@@ -651,8 +675,10 @@
 
   /* ── Afficher le tableau ──────────────────────────────────────────────── */
   function renderTable(rows) {
+    const from = currentOffset + 1;
+    const to   = Math.min(currentOffset + rows.length, totalRows);
     document.getElementById('rowBadge').textContent =
-      `${rows.length} ligne${rows.length !== 1 ? 's' : ''}`;
+      totalRows > PAGE_SIZE ? `${from}-${to} / ${totalRows}` : `${rows.length} ligne${rows.length !== 1 ? 's' : ''}`;
 
     const el = document.getElementById('content');
 
@@ -704,7 +730,19 @@
           </tr>`;
         }).join('')}
       </tbody>
-    </table>`;
+    </table>
+    ${ totalRows > PAGE_SIZE ? `
+    <div style="display:flex;align-items:center;justify-content:center;gap:10px;padding:12px;border-top:1px solid #e2e8f0;font-size:13px;color:#64748b;">
+      <button class="btn" ${currentOffset === 0 ? 'disabled' : ''}
+        onclick="loadData(currentTable, ${currentOffset - PAGE_SIZE})" style="${currentOffset===0?'opacity:.4;cursor:default;':''}">
+        ← Précédent
+      </button>
+      <span>Page ${Math.floor(currentOffset/PAGE_SIZE)+1} / ${Math.ceil(totalRows/PAGE_SIZE)}</span>
+      <button class="btn" ${currentOffset + PAGE_SIZE >= totalRows ? 'disabled' : ''}
+        onclick="loadData(currentTable, ${currentOffset + PAGE_SIZE})" style="${currentOffset+PAGE_SIZE>=totalRows?'opacity:.4;cursor:default;':''}">
+        Suivant →
+      </button>
+    </div>` : '' }`;
   }
 
   /* ── Recherche ────────────────────────────────────────────────────────── */
@@ -777,7 +815,7 @@
     try {
       const res = await fetch(url, {
         method: editingId ? 'PUT' : 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: authHeaders({ 'Content-Type': 'application/json' }),
         body: JSON.stringify(fields),
       });
       if (!res.ok) {
@@ -799,7 +837,7 @@
     try {
       const res = await fetch(
         `/api/pg/${encodeURIComponent(currentTable)}/${encodeURIComponent(pk)}`,
-        { method: 'DELETE' }
+        { method: 'DELETE', headers: authHeaders() }
       );
       if (!res.ok) { toast('Erreur lors de la suppression', 'error'); return; }
       toast('Enregistrement supprimé', 'success');

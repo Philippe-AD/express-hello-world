@@ -33,8 +33,8 @@ async function getValidColumns(name) {
 }
 
 // Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
+app.use(express.json({ limit: "100kb" }));
+app.use(express.urlencoded({ extended: true, limit: "100kb" }));
 
 // Forcer HTTPS (Render transmet x-forwarded-proto, absent en local)
 app.use((req, res, next) => {
@@ -48,6 +48,19 @@ app.use((req, res, next) => {
   next();
 });
 
+// ── Authentification API ─────────────────────────────────────────────────────
+const API_TOKEN = process.env.API_TOKEN;
+
+function requireAuth(req, res, next) {
+  if (!API_TOKEN) return next(); // pas de token configuré = dev local
+  const auth = req.headers["authorization"] || "";
+  const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
+  if (token !== API_TOKEN) {
+    return res.status(401).json({ error: "Non autorisé" });
+  }
+  next();
+}
+
 // Fichiers statiques
 app.use(express.static(path.join(__dirname, "public")));
 
@@ -59,7 +72,7 @@ app.get("/supabase", (req, res) =>
 );
 
 // Liste des tables publiques
-app.get("/api/pg/tables", async (req, res) => {
+app.get('/api/pg/tables', requireAuth, async (req, res) => {
   try {
     const r = await pool.query(
       `SELECT table_name FROM information_schema.tables
@@ -72,7 +85,7 @@ app.get("/api/pg/tables", async (req, res) => {
 });
 
 // Colonnes d'une table
-app.get("/api/pg/:table/columns", async (req, res) => {
+app.get('/api/pg/:table/columns', requireAuth, async (req, res) => {
   try {
     const { table } = req.params;
     if (!(await isValidTable(table)))
@@ -90,21 +103,31 @@ app.get("/api/pg/:table/columns", async (req, res) => {
   }
 });
 
-// Tous les enregistrements d'une table (max 500)
-app.get("/api/pg/:table", async (req, res) => {
+// Tous les enregistrements d'une table (paginé)
+app.get('/api/pg/:table', requireAuth, async (req, res) => {
   try {
     const { table } = req.params;
+    const limit  = Math.min(parseInt(req.query.limit)  || 100, 500);
+    const offset = Math.max(parseInt(req.query.offset) || 0,   0);
     if (!(await isValidTable(table)))
       return res.status(400).json({ error: "Table invalide" });
-    const r = await pool.query(`SELECT * FROM "${table}" LIMIT 500`);
-    res.json(r.rows);
+    const [rRows, rCount] = await Promise.all([
+      pool.query(`SELECT * FROM "${table}" LIMIT $1 OFFSET $2`, [limit, offset]),
+      pool.query(`SELECT COUNT(*) FROM "${table}"`),
+    ]);
+    res.json({
+      total: parseInt(rCount.rows[0].count),
+      limit,
+      offset,
+      rows: rRows.rows,
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
 // Créer un enregistrement
-app.post("/api/pg/:table", async (req, res) => {
+app.post('/api/pg/:table', requireAuth, async (req, res) => {
   try {
     const { table } = req.params;
     if (!(await isValidTable(table)))
@@ -129,7 +152,7 @@ app.post("/api/pg/:table", async (req, res) => {
 });
 
 // Mettre à jour un enregistrement
-app.put("/api/pg/:table/:id", async (req, res) => {
+app.put('/api/pg/:table/:id', requireAuth, async (req, res) => {
   try {
     const { table, id } = req.params;
     if (!(await isValidTable(table)))
@@ -153,7 +176,7 @@ app.put("/api/pg/:table/:id", async (req, res) => {
 });
 
 // Supprimer un enregistrement
-app.delete("/api/pg/:table/:id", async (req, res) => {
+app.delete('/api/pg/:table/:id', requireAuth, async (req, res) => {
   try {
     const { table, id } = req.params;
     if (!(await isValidTable(table)))
@@ -188,6 +211,17 @@ app.get("*", (req, res) => {
   res.sendFile(path.join(__dirname, "public", "index.html"));
 });
 
-app.listen(PORT, () => {
+const server = app.listen(PORT, () => {
   console.log(`Serveur démarré sur le port ${PORT}`);
+});
+
+// Arrêt propre (SIGTERM envoyé par Render avant redémarrage)
+process.on('SIGTERM', () => {
+  console.log('SIGTERM reçu — arrêt propre...');
+  server.close(() => {
+    pool.end(() => {
+      console.log('Connexions fermées.');
+      process.exit(0);
+    });
+  });
 });
