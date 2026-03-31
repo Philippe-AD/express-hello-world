@@ -1,24 +1,88 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="fr">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Mon App Node sur Render</title>
-  <link rel="stylesheet" href="/style.css" />
+  <title>Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg:#f8fafc; --surface:#ffffff; --border:#e2e8f0;
+      --text:#0f172a; --muted:#64748b; --light:#94a3b8;
+      --accent:#3ecf8e; --radius:12px;
+      --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
+      --shadow-md:0 4px 16px rgba(0,0,0,.10);
+    }
+    body { font-family:'Inter',system-ui,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; display:flex; flex-direction:column; }
+    header { height:56px; background:var(--surface); border-bottom:1px solid var(--border); padding:0 28px; display:flex; align-items:center; justify-content:space-between; }
+    .logo { display:flex; align-items:center; gap:10px; font-size:15px; font-weight:600; text-decoration:none; color:var(--text); }
+    .logo-dot { width:10px; height:10px; border-radius:50%; background:var(--accent); }
+    .status-pill { display:flex; align-items:center; gap:6px; font-size:12px; color:var(--muted); background:var(--bg); border:1px solid var(--border); padding:4px 12px; border-radius:99px; }
+    .dot-green { width:7px; height:7px; border-radius:50%; background:#22c55e; }
+    .hero { padding:56px 28px 40px; text-align:center; }
+    .hero h1 { font-size:32px; font-weight:700; letter-spacing:-.02em; margin-bottom:12px; }
+    .hero p { font-size:15px; color:var(--muted); max-width:440px; margin:0 auto; line-height:1.6; }
+    .grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(240px,1fr)); gap:16px; max-width:900px; margin:0 auto; padding:0 28px 60px; width:100%; }
+    .card { background:var(--surface); border:1px solid var(--border); border-radius:var(--radius); box-shadow:var(--shadow); padding:24px; text-decoration:none; color:inherit; display:flex; flex-direction:column; gap:14px; transition:box-shadow .15s,transform .15s,border-color .15s; position:relative; overflow:hidden; }
+    .card::after { content:''; position:absolute; bottom:0; left:0; right:0; height:3px; background:var(--card-color,var(--accent)); opacity:0; transition:opacity .15s; }
+    .card:hover { box-shadow:var(--shadow-md); transform:translateY(-2px); border-color:#c8d9e8; }
+    .card:hover::after { opacity:1; }
+    .card-icon { width:40px; height:40px; border-radius:10px; background:var(--card-bg,#ecfdf5); display:flex; align-items:center; justify-content:center; }
+    .card-icon svg { width:20px; height:20px; }
+    .card-label { font-size:12px; font-weight:600; text-transform:uppercase; letter-spacing:.07em; color:var(--muted); }
+    .card h2 { font-size:16px; font-weight:600; margin-bottom:2px; }
+    .card p { font-size:13px; color:var(--muted); line-height:1.55; flex:1; }
+    .card-arrow { display:flex; align-items:center; gap:4px; font-size:12px; font-weight:500; color:var(--card-color,var(--accent)); margin-top:4px; }
+    .soon { opacity:.55; pointer-events:none; }
+    .badge-soon { position:absolute; top:14px; right:14px; font-size:10px; font-weight:600; text-transform:uppercase; letter-spacing:.06em; background:var(--bg); border:1px solid var(--border); color:var(--light); padding:2px 8px; border-radius:99px; }
+    footer { margin-top:auto; padding:20px 28px; text-align:center; font-size:12px; color:var(--light); border-top:1px solid var(--border); }
+  </style>
 </head>
 <body>
-  <main class="container">
-    <h1>Mon App Node sur Render</h1>
-    <p>L’application fonctionne.</p>
+<header>
+  <a class="logo" href="/"><span class="logo-dot"></span>Dashboard</a>
+  <div class="status-pill"><span class="dot-green"></span>En ligne</div>
+</header>
+<section class="hero">
+  <h1>Bienvenue &#128075;</h1>
+  <p>Selectionnez un outil pour commencer.</p>
+</section>
+<div class="grid">
 
-    <div class="card">
-      <input id="messageInput" type="text" placeholder="Écris un message" />
-      <button id="sendBtn">Envoyer à l’API</button>
+  <a class="card" href="/supabase" style="--card-color:#3ecf8e;--card-bg:#ecfdf5;">
+    <div class="card-icon">
+      <svg viewBox="0 0 109 113" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M63.7076 110.284C60.8481 113.885 55.0502 111.912 54.9813 107.314L53.9738 40.0627L99.1935 40.0627C107.384 40.0627 111.952 49.5228 106.859 55.9374L63.7076 110.284Z" fill="url(#lg1)"/>
+        <path d="M63.7076 110.284C60.8481 113.885 55.0502 111.912 54.9813 107.314L53.9738 40.0627L99.1935 40.0627C107.384 40.0627 111.952 49.5228 106.859 55.9374L63.7076 110.284Z" fill="url(#lg2)" fill-opacity="0.2"/>
+        <path d="M45.317 2.07103C48.1765 -1.53037 53.9745 0.442937 54.0434 5.04087L54.4849 72.2922H9.83113C1.64038 72.2922 -2.92775 62.8321 2.1655 56.4175L45.317 2.07103Z" fill="#3ECF8E"/>
+        <defs>
+          <linearGradient id="lg1" x1="53.9738" y1="54.974" x2="94.1635" y2="71.8295" gradientUnits="userSpaceOnUse"><stop stop-color="#249361"/><stop offset="1" stop-color="#3ECF8E"/></linearGradient>
+          <linearGradient id="lg2" x1="36.1558" y1="30.578" x2="54.4844" y2="65.0806" gradientUnits="userSpaceOnUse"><stop/><stop offset="1" stop-opacity="0"/></linearGradient>
+        </defs>
+      </svg>
     </div>
+    <div><div class="card-label">Base de donnees</div><h2>Supabase Manager</h2></div>
+    <p>Consulte, ajoute, modifie et supprime des enregistrements dans tes tables PostgreSQL.</p>
+    <div class="card-arrow">Ouvrir <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div>
+  </a>
 
-    <pre id="output">En attente...</pre>
-  </main>
+  <div class="card soon" style="--card-color:#6366f1;--card-bg:#eef2ff;">
+    <span class="badge-soon">Bientot</span>
+    <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#6366f1" stroke-width="1.7"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div>
+    <div><div class="card-label">Communication</div><h2>Messagerie</h2></div>
+    <p>Gestion des emails et notifications.</p>
+  </div>
 
-  <script src="/app.js"></script>
+  <div class="card soon" style="--card-color:#f59e0b;--card-bg:#fffbeb;">
+    <span class="badge-soon">Bientot</span>
+    <div class="card-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.7"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg></div>
+    <div><div class="card-label">Contenu</div><h2>Editeur</h2></div>
+    <p>Creation et gestion de contenu.</p>
+  </div>
+
+</div>
+<footer>calmtechnology.ch &mdash; Node.js / Express / Supabase</footer>
 </body>
 </html>
