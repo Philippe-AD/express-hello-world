@@ -1,0 +1,588 @@
+
+<html lang="fr" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Horloge & Calendrier</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  /* ── THEMES ─────────────────────────────── */
+  :root, [data-theme="dark"] {
+    --bg:       #0d0d0f;
+    --surface:  #141417;
+    --surface2: #1c1c21;
+    --border:   rgba(255,255,255,0.07);
+    --text:     #f0ede8;
+    --muted:    #6b6875;
+    --accent:   #c8b560;
+    --accent2:  #7b6fa0;
+    --shadow:   rgba(0,0,0,0.4);
+    --grain-opacity: 0.5;
+  }
+
+  [data-theme="light"] {
+    --bg:       #f4f1eb;
+    --surface:  #ffffff;
+    --surface2: #ede9e0;
+    --border:   rgba(0,0,0,0.08);
+    --text:     #1a1810;
+    --muted:    #9a9590;
+    --accent:   #a8882a;
+    --accent2:  #5c5080;
+    --shadow:   rgba(0,0,0,0.12);
+    --grain-opacity: 0.2;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    transition: background 0.35s ease, color 0.35s ease;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+    background-size: 200px;
+    pointer-events: none;
+    z-index: 0;
+    opacity: var(--grain-opacity);
+    transition: opacity 0.35s ease;
+  }
+
+  /* ── SETTINGS BUTTON ─────────────────────── */
+  .settings-btn {
+    position: fixed;
+    top: 1.2rem;
+    right: 1.2rem;
+    z-index: 200;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    width: 40px; height: 40px;
+    border-radius: 11px;
+    cursor: pointer;
+    display: grid;
+    place-items: center;
+    transition: color 0.2s, border-color 0.2s, background 0.35s, transform 0.45s cubic-bezier(0.34,1.56,0.64,1);
+    box-shadow: 0 2px 12px var(--shadow);
+  }
+
+  .settings-btn:hover { color: var(--accent); border-color: rgba(200,181,96,0.4); }
+  .settings-btn.open  { transform: rotate(65deg); color: var(--accent); border-color: rgba(200,181,96,0.5); }
+
+  .settings-btn svg {
+    width: 17px; height: 17px;
+    fill: none; stroke: currentColor;
+    stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round;
+  }
+
+  /* ── SETTINGS PANEL ──────────────────────── */
+  .settings-panel {
+    position: fixed;
+    top: 4.2rem;
+    right: 1.2rem;
+    z-index: 190;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 1.2rem 1.5rem 1.4rem;
+    width: 220px;
+    box-shadow: 0 8px 36px var(--shadow);
+    transform: translateY(-10px) scale(0.95);
+    opacity: 0;
+    pointer-events: none;
+    transition: transform 0.28s cubic-bezier(0.16,1,0.3,1),
+                opacity 0.22s ease,
+                background 0.35s ease,
+                border-color 0.35s ease;
+  }
+
+  .settings-panel.open {
+    transform: translateY(0) scale(1);
+    opacity: 1;
+    pointer-events: all;
+  }
+
+  .settings-section-title {
+    font-size: 0.57rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 1rem;
+  }
+
+  .setting-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.8rem;
+  }
+
+  .setting-label {
+    font-size: 0.72rem;
+    color: var(--text);
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    transition: color 0.3s;
+  }
+
+  .setting-label svg {
+    width: 14px; height: 14px;
+    fill: none; stroke: var(--accent);
+    stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round;
+    flex-shrink: 0;
+    transition: stroke 0.35s;
+  }
+
+  /* Toggle switch */
+  .toggle-wrap {
+    position: relative;
+    width: 46px; height: 26px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .toggle-wrap input { display: none; }
+
+  .toggle-track {
+    position: absolute;
+    inset: 0;
+    border-radius: 999px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    transition: background 0.3s, border-color 0.3s;
+  }
+
+  .toggle-thumb {
+    position: absolute;
+    top: 4px; left: 4px;
+    width: 16px; height: 16px;
+    border-radius: 50%;
+    background: var(--muted);
+    transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1), background 0.3s;
+    pointer-events: none;
+  }
+
+  .toggle-wrap input:checked ~ .toggle-track {
+    background: var(--accent);
+    border-color: var(--accent);
+  }
+
+  .toggle-wrap input:checked ~ .toggle-track .toggle-thumb {
+    transform: translateX(20px);
+    background: #fff;
+  }
+
+  /* ── LAYOUT ──────────────────────────────── */
+  .container {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+    width: min(95vw, 860px);
+    align-items: start;
+    animation: fadeUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) both;
+    position: relative;
+    z-index: 1;
+  }
+
+  @media (max-width: 600px) {
+    .container { grid-template-columns: 1fr; width: min(92vw, 420px); }
+  }
+
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(24px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  /* ── CLOCK ─────────────────────────────── */
+  .clock-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 2.5rem 2rem 2rem;
+    position: relative;
+    overflow: hidden;
+    height: 100%;
+    transition: background 0.35s, border-color 0.35s;
+  }
+
+  .clock-card::after {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 160px; height: 160px;
+    background: radial-gradient(circle, rgba(200,181,96,0.12), transparent 70%);
+    border-radius: 50%;
+    pointer-events: none;
+  }
+
+  .date-label {
+    font-size: 0.65rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.5rem;
+  }
+
+  .date-display {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.15rem;
+    color: var(--accent);
+    margin-bottom: 1.5rem;
+    letter-spacing: 0.02em;
+    transition: color 0.35s;
+  }
+
+  .time-display {
+    font-family: 'DM Serif Display', serif;
+    font-size: clamp(3.5rem, 7vw, 5.5rem);
+    line-height: 1;
+    letter-spacing: -0.03em;
+    display: flex;
+    align-items: baseline;
+    gap: 0.05em;
+  }
+
+  .time-colon {
+    animation: blink 1s step-end infinite;
+    color: var(--accent);
+    transition: color 0.35s;
+  }
+
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0; }
+  }
+
+  .time-seconds {
+    font-size: 2rem;
+    color: var(--muted);
+    align-self: flex-end;
+    margin-bottom: 0.3rem;
+    margin-left: 0.1em;
+  }
+
+  .progress-bar {
+    margin-top: 1.5rem;
+    height: 2px;
+    background: var(--border);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent2), var(--accent));
+    border-radius: 2px;
+    transition: width 1s linear;
+  }
+
+  .day-progress-label {
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    text-transform: uppercase;
+    margin-top: 0.5rem;
+    display: flex;
+    justify-content: space-between;
+  }
+
+  /* ── CALENDAR ───────────────────────────── */
+  .calendar-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 1.8rem 1.8rem 1.5rem;
+    animation: fadeUp 0.8s 0.15s cubic-bezier(0.16, 1, 0.3, 1) both;
+    transition: background 0.35s, border-color 0.35s;
+    display: flex;
+    flex-direction: column;
+    height: 380px;
+  }
+
+  .cal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+  }
+
+  .cal-title {
+    font-family: 'DM Serif Display', serif;
+    font-size: 1.25rem;
+    letter-spacing: 0.01em;
+  }
+
+  .cal-nav { display: flex; gap: 0.5rem; }
+
+  .cal-btn {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    width: 30px; height: 30px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 0.75rem;
+    display: grid;
+    place-items: center;
+    transition: background 0.2s, border-color 0.2s, color 0.2s;
+  }
+
+  .cal-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    grid-template-rows: auto repeat(6, 1fr);
+    gap: 4px;
+    flex: 1;
+  }
+
+  .cal-day-name {
+    text-align: center;
+    font-size: 0.58rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding-bottom: 0.6rem;
+  }
+
+  .cal-day {
+    display: grid;
+    place-items: center;
+    font-size: 0.78rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    color: var(--text);
+    min-height: 0;
+  }
+
+  .cal-day:hover:not(.today) { background: var(--surface2); }
+  .cal-day.other-month { color: var(--muted); opacity: 0.4; }
+
+  .cal-day.today {
+    background: var(--accent);
+    color: var(--bg);
+    font-weight: 500;
+  }
+
+  .cal-day.selected:not(.today) {
+    background: var(--surface2);
+    border: 1px solid var(--accent2);
+    color: var(--accent2);
+  }
+</style>
+</head>
+<body>
+
+<!-- ⚙ Settings button -->
+<button class="settings-btn" id="settingsBtn" title="Paramètres" onclick="toggleSettings()">
+  <svg viewBox="0 0 24 24">
+    <circle cx="12" cy="12" r="3"/>
+    <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+  </svg>
+</button>
+
+<!-- Settings panel -->
+<div class="settings-panel" id="settingsPanel">
+  <div class="settings-section-title">Apparence</div>
+  <div class="setting-row">
+    <span class="setting-label" id="themeLabel">
+      <!-- SVG swapped by JS -->
+      <svg id="themeIcon" viewBox="0 0 24 24">
+        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
+      </svg>
+      <span id="themeLabelText">Mode sombre</span>
+    </span>
+    <label class="toggle-wrap">
+      <input type="checkbox" id="themeToggle" onchange="toggleTheme(this)">
+      <div class="toggle-track">
+        <div class="toggle-thumb"></div>
+      </div>
+    </label>
+  </div>
+</div>
+
+<div class="container">
+  <!-- Clock -->
+  <div class="clock-card">
+    <div class="date-label">Aujourd'hui</div>
+    <div class="date-display" id="fullDate">—</div>
+    <div class="time-display">
+      <span id="hours">00</span>
+      <span class="time-colon">:</span>
+      <span id="minutes">00</span>
+      <span class="time-seconds" id="seconds">00</span>
+    </div>
+    <div class="progress-bar">
+      <div class="progress-fill" id="dayProgress" style="width:0%"></div>
+    </div>
+    <div class="day-progress-label">
+      <span>Début de journée</span>
+      <span id="dayPct">0%</span>
+    </div>
+  </div>
+
+  <!-- Calendar -->
+  <div class="calendar-card">
+    <div class="cal-header">
+      <div class="cal-title" id="calTitle">—</div>
+      <div class="cal-nav">
+        <button class="cal-btn" onclick="changeMonth(-1)">‹</button>
+        <button class="cal-btn" onclick="changeMonth(1)">›</button>
+      </div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+</div>
+
+<script>
+  const DAYS_FR   = ['Lun','Mar','Mer','Jeu','Ven','Sam','Dim'];
+  const MONTHS_FR = ['Janvier','Février','Mars','Avril','Mai','Juin',
+                     'Juillet','Août','Septembre','Octobre','Novembre','Décembre'];
+  const MONTHS_GEN= ['janvier','février','mars','avril','mai','juin',
+                     'juillet','août','septembre','octobre','novembre','décembre'];
+  const WEEKDAYS  = ['dimanche','lundi','mardi','mercredi','jeudi','vendredi','samedi'];
+
+  const SVG_MOON = `<path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>`;
+  const SVG_SUN  = `<circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>`;
+
+  let viewYear, viewMonth, selectedDay = null, settingsOpen = false;
+
+  /* ── SETTINGS ───────────────────────────── */
+  function toggleSettings() {
+    settingsOpen = !settingsOpen;
+    document.getElementById('settingsBtn').classList.toggle('open', settingsOpen);
+    document.getElementById('settingsPanel').classList.toggle('open', settingsOpen);
+  }
+
+  document.addEventListener('click', (e) => {
+    if (settingsOpen && !e.target.closest('#settingsBtn') && !e.target.closest('#settingsPanel')) {
+      settingsOpen = false;
+      document.getElementById('settingsBtn').classList.remove('open');
+      document.getElementById('settingsPanel').classList.remove('open');
+    }
+  });
+
+  function setThemeUI(isLight) {
+    document.getElementById('themeIcon').innerHTML = isLight ? SVG_SUN : SVG_MOON;
+    document.getElementById('themeLabelText').textContent = isLight ? 'Mode clair' : 'Mode sombre';
+    document.getElementById('themeToggle').checked = isLight;
+  }
+
+  function toggleTheme(cb) {
+    const isLight = cb.checked;
+    document.documentElement.setAttribute('data-theme', isLight ? 'light' : 'dark');
+    setThemeUI(isLight);
+    localStorage.setItem('theme', isLight ? 'light' : 'dark');
+  }
+
+  function applyStoredTheme() {
+    const saved = localStorage.getItem('theme') || 'dark';
+    document.documentElement.setAttribute('data-theme', saved);
+    setThemeUI(saved === 'light');
+  }
+
+  /* ── CLOCK ──────────────────────────────── */
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function updateClock() {
+    const now = new Date();
+    document.getElementById('hours').textContent   = pad(now.getHours());
+    document.getElementById('minutes').textContent = pad(now.getMinutes());
+    document.getElementById('seconds').textContent = pad(now.getSeconds());
+
+    const wd = WEEKDAYS[now.getDay()];
+    document.getElementById('fullDate').textContent =
+      `${wd.charAt(0).toUpperCase()+wd.slice(1)} ${now.getDate()} ${MONTHS_GEN[now.getMonth()]} ${now.getFullYear()}`;
+
+    const elapsed = now.getHours()*3600 + now.getMinutes()*60 + now.getSeconds();
+    const pct = Math.round(elapsed / 86400 * 100);
+    document.getElementById('dayProgress').style.width = pct + '%';
+    document.getElementById('dayPct').textContent = pct + '%';
+  }
+
+  /* ── CALENDAR ───────────────────────────── */
+  function renderCalendar() {
+    const now   = new Date();
+    const today = { y: now.getFullYear(), m: now.getMonth(), d: now.getDate() };
+    document.getElementById('calTitle').textContent = MONTHS_FR[viewMonth] + ' ' + viewYear;
+
+    const grid = document.getElementById('calGrid');
+    grid.innerHTML = '';
+
+    DAYS_FR.forEach(d => {
+      const el = document.createElement('div');
+      el.className = 'cal-day-name';
+      el.textContent = d;
+      grid.appendChild(el);
+    });
+
+    let startDow = new Date(viewYear, viewMonth, 1).getDay();
+    startDow = (startDow === 0) ? 6 : startDow - 1;
+
+    const daysInMonth     = new Date(viewYear, viewMonth+1, 0).getDate();
+    const daysInPrevMonth = new Date(viewYear, viewMonth, 0).getDate();
+
+    for (let i = startDow - 1; i >= 0; i--) {
+      const el = document.createElement('div');
+      el.className = 'cal-day other-month';
+      el.textContent = daysInPrevMonth - i;
+      grid.appendChild(el);
+    }
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const el = document.createElement('div');
+      el.className = 'cal-day';
+      el.textContent = d;
+      const isToday = (d === today.d && viewMonth === today.m && viewYear === today.y);
+      if (isToday) el.classList.add('today');
+      if (selectedDay && selectedDay.d === d && selectedDay.m === viewMonth && selectedDay.y === viewYear && !isToday)
+        el.classList.add('selected');
+      el.addEventListener('click', () => { selectedDay = {d, m: viewMonth, y: viewYear}; renderCalendar(); });
+      grid.appendChild(el);
+    }
+
+    // Always fill to exactly 42 cells (6 full rows)
+    const filled = startDow + daysInMonth;
+    const trailing = filled <= 35 ? 35 - filled : 42 - filled;
+    for (let d = 1; d <= trailing; d++) {
+      const el = document.createElement('div');
+      el.className = 'cal-day other-month';
+      el.textContent = d;
+      grid.appendChild(el);
+    }
+  }
+
+  function changeMonth(dir) {
+    viewMonth += dir;
+    if (viewMonth > 11) { viewMonth = 0; viewYear++; }
+    if (viewMonth < 0)  { viewMonth = 11; viewYear--; }
+    renderCalendar();
+  }
+
+  function init() {
+    applyStoredTheme();
+    const now = new Date();
+    viewYear = now.getFullYear();
+    viewMonth = now.getMonth();
+    updateClock();
+    renderCalendar();
+    setInterval(updateClock, 1000);
+  }
+
+  init();
+</script>
+</body>
+</html>
