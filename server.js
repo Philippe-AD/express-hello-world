@@ -36,9 +36,10 @@ async function getValidColumns(name) {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Forcer HTTPS en production
+// Forcer HTTPS (Render transmet x-forwarded-proto, absent en local)
 app.use((req, res, next) => {
-  if (process.env.NODE_ENV === "production" && req.headers["x-forwarded-proto"] !== "https") {
+  const proto = req.headers["x-forwarded-proto"];
+  if (proto && proto !== "https") {
     return res.redirect(301, "https://" + req.headers.host + req.url);
   }
   next();
