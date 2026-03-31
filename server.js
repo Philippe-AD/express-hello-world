@@ -36,6 +36,14 @@ async function getValidColumns(name) {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
+// Forcer HTTPS en production
+app.use((req, res, next) => {
+  if (process.env.NODE_ENV === "production" && req.headers["x-forwarded-proto"] !== "https") {
+    return res.redirect(301, "https://" + req.headers.host + req.url);
+  }
+  next();
+});
+
 // Fichiers statiques
 app.use(express.static(path.join(__dirname, "public")));
 
