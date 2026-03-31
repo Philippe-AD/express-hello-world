@@ -463,9 +463,15 @@
     </svg>
     Supabase Manager
   </div>
-  <div class="conn-pill">
-    <span class="dot loading" id="dot"></span>
-    <span id="connLabel">Connexion…</span>
+  <div style="display:flex;align-items:center;gap:16px">
+    <a href="/" style="display:flex;align-items:center;gap:5px;font-size:13px;color:var(--muted);text-decoration:none;" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--muted)'">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Dashboard
+    </a>
+    <div class="conn-pill">
+      <span class="dot loading" id="dot"></span>
+      <span id="connLabel">Connexion…</span>
+    </div>
   </div>
 </header>
 
