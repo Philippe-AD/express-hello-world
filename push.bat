@@ -14,7 +14,17 @@ set /p MSG="Message du commit : "
 if "%MSG%"=="" set MSG=Mise a jour
 
 git commit -m "%MSG%"
+
+:retry
+echo.
+echo Envoi vers GitHub...
 git push
+if %ERRORLEVEL% neq 0 (
+    echo.
+    echo Echec du push. Nouvelle tentative dans 5 secondes...
+    timeout /t 5 >nul
+    goto retry
+)
 
 echo.
 echo ================================
