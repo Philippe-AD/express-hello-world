@@ -1,0 +1,816 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Supabase Manager</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:          #f8fafc;
+      --surface:     #ffffff;
+      --border:      #e2e8f0;
+      --text:        #0f172a;
+      --muted:       #64748b;
+      --light:       #94a3b8;
+      --accent:      #3ecf8e;
+      --accent-dk:   #29a373;
+      --danger:      #ef4444;
+      --danger-bg:   #fef2f2;
+      --success:     #22c55e;
+      --radius:      8px;
+      --shadow:      0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.05);
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      font-size: 14px;
+      line-height: 1.5;
+    }
+
+    /* ═══ HEADER ═══════════════════════════════════════════════════════════ */
+    header {
+      height: 54px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .logo svg { width: 26px; height: 26px; flex-shrink: 0; }
+
+    .conn-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 4px 12px;
+      border-radius: 99px;
+    }
+
+    .dot {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--light);
+      transition: background .3s;
+    }
+    .dot.on  { background: var(--success); }
+    .dot.off { background: var(--danger); }
+    .dot.loading { animation: blink .8s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:.25} }
+
+    /* ═══ LAYOUT ════════════════════════════════════════════════════════════ */
+    .layout {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* ═══ SIDEBAR ═══════════════════════════════════════════════════════════ */
+    aside {
+      width: 208px;
+      flex-shrink: 0;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .sidebar-head {
+      padding: 14px 16px 8px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      color: var(--light);
+    }
+
+    .tbl-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0 8px 12px;
+    }
+
+    .tbl-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 7px 10px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--muted);
+      transition: all .12s;
+      user-select: none;
+    }
+    .tbl-item:hover { background: var(--bg); color: var(--text); }
+    .tbl-item.active {
+      background: #ecfdf5;
+      color: #15803d;
+      font-weight: 500;
+    }
+    .tbl-item svg { flex-shrink: 0; opacity: .55; }
+    .tbl-item.active svg { opacity: 1; }
+
+    /* ═══ MAIN ══════════════════════════════════════════════════════════════ */
+    main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding: 20px;
+      gap: 14px;
+    }
+
+    /* welcome */
+    .welcome {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+      color: var(--muted);
+      text-align: center;
+    }
+    .welcome svg { opacity: .2; }
+    .welcome h3  { font-size: 15px; font-weight: 500; }
+    .welcome p   { font-size: 13px; color: var(--light); }
+
+    /* table view */
+    #view {
+      display: none;
+      flex-direction: column;
+      gap: 14px;
+      flex: 1;
+      min-height: 0;
+    }
+
+    .view-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .view-meta { display: flex; align-items: baseline; gap: 8px; }
+    .view-meta h2 { font-size: 18px; font-weight: 600; }
+
+    .badge {
+      font-size: 12px;
+      color: var(--muted);
+      background: var(--bg);
+      border: 1px solid var(--border);
+      padding: 1px 8px;
+      border-radius: 99px;
+    }
+
+    .toolbar { display: flex; align-items: center; gap: 8px; }
+
+    /* ═══ BUTTONS ════════════════════════════════════════════════════════════ */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 7px 13px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      color: var(--text);
+      font-size: 13px;
+      font-family: inherit;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all .12s;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--bg); }
+
+    .btn-primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { background: var(--accent-dk); border-color: var(--accent-dk); }
+
+    .btn-icon { padding: 6px 7px; color: var(--muted); }
+
+    .btn-del {
+      padding: 6px 7px;
+      color: var(--muted);
+    }
+    .btn-del:hover { background: var(--danger-bg); border-color: #fca5a5; color: var(--danger); }
+
+    /* search */
+    .search-wrap { position: relative; }
+    .search-wrap svg {
+      position: absolute; left: 9px; top: 50%;
+      transform: translateY(-50%);
+      color: var(--light); pointer-events: none;
+    }
+    .search-input {
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 7px 12px 7px 30px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      width: 200px;
+      background: var(--surface);
+      color: var(--text);
+      transition: border-color .15s;
+    }
+    .search-input:focus { border-color: var(--accent); }
+
+    /* ═══ DATA CARD ══════════════════════════════════════════════════════════ */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .scroll { overflow: auto; flex: 1; }
+
+    /* ═══ TABLE ══════════════════════════════════════════════════════════════ */
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+
+    thead { position: sticky; top: 0; z-index: 2; }
+
+    th {
+      background: #f1f5f9;
+      padding: 9px 14px;
+      text-align: left;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 9px 14px;
+      border-bottom: 1px solid #f1f5f9;
+      max-width: 240px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      vertical-align: middle;
+    }
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: #fafcfe; }
+
+    td.mono { font-family: 'Menlo','Monaco',monospace; font-size: 12px; color: var(--muted); }
+    .null-v  { color: var(--light); font-style: italic; }
+
+    .row-acts { display: flex; gap: 3px; }
+
+    /* ═══ STATE MESSAGES ══════════════════════════════════════════════════════ */
+    .state {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 48px;
+      color: var(--muted);
+      text-align: center;
+    }
+    .state svg { opacity: .2; }
+    .state p   { font-size: 13px; color: var(--light); }
+
+    .spinner {
+      width: 18px; height: 18px;
+      border: 2px solid var(--border);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin .65s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ═══ MODAL ══════════════════════════════════════════════════════════════ */
+    .overlay {
+      position: fixed; inset: 0;
+      background: rgba(15,23,42,.45);
+      backdrop-filter: blur(3px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s;
+    }
+    .overlay.open { opacity: 1; pointer-events: all; }
+
+    .modal {
+      background: var(--surface);
+      border-radius: 12px;
+      width: 460px;
+      max-width: calc(100vw - 32px);
+      max-height: 86vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0,0,0,.18);
+      transform: translateY(10px) scale(.97);
+      transition: transform .2s;
+    }
+    .overlay.open .modal { transform: none; }
+
+    .modal-head {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .modal-head h3 { font-size: 15px; font-weight: 600; }
+
+    .close-btn {
+      width: 28px; height: 28px;
+      border: none; background: none; cursor: pointer;
+      border-radius: 6px; color: var(--muted);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 17px; transition: background .12s;
+    }
+    .close-btn:hover { background: var(--bg); color: var(--text); }
+
+    .modal-body {
+      padding: 18px 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 13px;
+    }
+
+    .field label {
+      display: block;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .06em;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    .type-hint { font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--light); }
+
+    .field input[type="text"],
+    .field textarea {
+      width: 100%;
+      padding: 8px 11px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+      color: var(--text);
+      background: var(--surface);
+      transition: border-color .15s, box-shadow .15s;
+    }
+    .field input[type="text"]:focus,
+    .field textarea:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(62,207,142,.15);
+    }
+    .field textarea { resize: vertical; min-height: 72px; }
+
+    .modal-foot {
+      padding: 12px 20px 18px;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    /* ═══ TOASTS ══════════════════════════════════════════════════════════════ */
+    #toasts {
+      position: fixed;
+      bottom: 20px; right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 100;
+    }
+
+    .toast {
+      padding: 10px 16px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: 0 4px 16px rgba(0,0,0,.15);
+      animation: slideUp .25s ease;
+      max-width: 280px;
+    }
+    .toast.success { background: #14532d; color: #bbf7d0; }
+    .toast.error   { background: #7f1d1d; color: #fecaca; }
+    .toast.info    { background: var(--text); color: #fff; }
+
+    @keyframes slideUp {
+      from { transform: translateY(12px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── HEADER ─────────────────────────────────────────────────────────────── -->
+<header>
+  <div class="logo">
+    <!-- Logo Supabase officiel -->
+    <svg viewBox="0 0 109 113" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <path d="M63.7076 110.284C60.8481 113.885 55.0502 111.912 54.9813 107.314L53.9738 40.0627L99.1935 40.0627C107.384 40.0627 111.952 49.5228 106.859 55.9374L63.7076 110.284Z" fill="url(#lg1)"/>
+      <path d="M63.7076 110.284C60.8481 113.885 55.0502 111.912 54.9813 107.314L53.9738 40.0627L99.1935 40.0627C107.384 40.0627 111.952 49.5228 106.859 55.9374L63.7076 110.284Z" fill="url(#lg2)" fill-opacity="0.2"/>
+      <path d="M45.317 2.07103C48.1765 -1.53037 53.9745 0.442937 54.0434 5.04087L54.4849 72.2922H9.83113C1.64038 72.2922 -2.92775 62.8321 2.1655 56.4175L45.317 2.07103Z" fill="#3ECF8E"/>
+      <defs>
+        <linearGradient id="lg1" x1="53.9738" y1="54.974" x2="94.1635" y2="71.8295" gradientUnits="userSpaceOnUse">
+          <stop stop-color="#249361"/><stop offset="1" stop-color="#3ECF8E"/>
+        </linearGradient>
+        <linearGradient id="lg2" x1="36.1558" y1="30.578" x2="54.4844" y2="65.0806" gradientUnits="userSpaceOnUse">
+          <stop/><stop offset="1" stop-opacity="0"/>
+        </linearGradient>
+      </defs>
+    </svg>
+    Supabase Manager
+  </div>
+  <div class="conn-pill">
+    <span class="dot loading" id="dot"></span>
+    <span id="connLabel">Connexion…</span>
+  </div>
+</header>
+
+<!-- ── LAYOUT ─────────────────────────────────────────────────────────────── -->
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside>
+    <div class="sidebar-head">Tables</div>
+    <div class="tbl-list" id="tblList">
+      <div class="state"><div class="spinner"></div></div>
+    </div>
+  </aside>
+
+  <!-- Main -->
+  <main>
+    <!-- Welcome -->
+    <div class="welcome" id="welcome">
+      <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+        <ellipse cx="12" cy="5" rx="9" ry="3"/>
+        <path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/>
+        <path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>
+      </svg>
+      <h3>Sélectionne une table</h3>
+      <p>Choisis une table dans la barre latérale pour explorer et gérer tes données.</p>
+    </div>
+
+    <!-- Table view -->
+    <div id="view">
+      <div class="view-header">
+        <div class="view-meta">
+          <h2 id="tblName">—</h2>
+          <span class="badge" id="rowBadge">0 lignes</span>
+        </div>
+        <div class="toolbar">
+          <div class="search-wrap">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+            </svg>
+            <input class="search-input" id="searchInput" type="search" placeholder="Rechercher…" />
+          </div>
+          <button class="btn" id="refreshBtn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6"/><path d="M1 20v-6h6"/>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </svg>
+            Actualiser
+          </button>
+          <button class="btn btn-primary" id="addBtn">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <path d="M12 5v14M5 12h14"/>
+            </svg>
+            Ajouter
+          </button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="scroll">
+          <div id="content"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ── MODAL ────────────────────────────────────────────────────────────────── -->
+<div class="overlay" id="overlay">
+  <div class="modal">
+    <div class="modal-head">
+      <h3 id="modalTitle">Ajouter</h3>
+      <button class="close-btn" id="closeBtn">✕</button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+    <div class="modal-foot">
+      <button class="btn" id="cancelBtn">Annuler</button>
+      <button class="btn btn-primary" id="saveBtn">Enregistrer</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── TOASTS ────────────────────────────────────────────────────────────────── -->
+<div id="toasts"></div>
+
+<script>
+  /* ── État ──────────────────────────────────────────────────────────────── */
+  let currentTable = null;
+  let allRows      = [];
+  let columns      = [];
+  let rowsMap      = new Map();
+  let editingId    = null;
+
+  /* ── Toast ─────────────────────────────────────────────────────────────── */
+  function toast(msg, type = 'info') {
+    const el = document.createElement('div');
+    el.className = `toast ${type}`;
+    el.textContent = msg;
+    document.getElementById('toasts').appendChild(el);
+    setTimeout(() => el.remove(), 3500);
+  }
+
+  /* ── Statut connexion ──────────────────────────────────────────────────── */
+  function setConn(state) {
+    const d = document.getElementById('dot');
+    const l = document.getElementById('connLabel');
+    if      (state === 'on')  { d.className = 'dot on';      l.textContent = 'Connecté'; }
+    else if (state === 'off') { d.className = 'dot off';     l.textContent = 'Hors ligne'; }
+    else                      { d.className = 'dot loading'; l.textContent = 'Connexion…'; }
+  }
+
+  /* ── Escape HTML ───────────────────────────────────────────────────────── */
+  function esc(s) {
+    return String(s ?? '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  function trunc(s, n = 65) {
+    return s.length > n ? s.slice(0, n) + '…' : s;
+  }
+
+  /* ── Charger la liste des tables ──────────────────────────────────────── */
+  async function loadTables() {
+    try {
+      const res = await fetch('/api/pg/tables');
+      if (!res.ok) throw new Error();
+      const tables = await res.json();
+      setConn('on');
+      const list = document.getElementById('tblList');
+      if (!tables.length) {
+        list.innerHTML = '<div class="state"><p>Aucune table trouvée.</p></div>';
+        return;
+      }
+      list.innerHTML = tables.map(t => `
+        <div class="tbl-item" id="ti-${esc(t)}" onclick="selectTable('${esc(t)}')">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+            <rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 21V9"/>
+          </svg>
+          ${esc(t)}
+        </div>`).join('');
+    } catch {
+      setConn('off');
+      document.getElementById('tblList').innerHTML =
+        '<div class="state"><p>Impossible de se connecter.</p></div>';
+    }
+  }
+
+  /* ── Sélectionner une table ───────────────────────────────────────────── */
+  async function selectTable(name) {
+    currentTable = name;
+    document.querySelectorAll('.tbl-item').forEach(e => e.classList.remove('active'));
+    document.getElementById(`ti-${name}`)?.classList.add('active');
+    document.getElementById('tblName').textContent = name;
+    document.getElementById('welcome').style.display = 'none';
+    const v = document.getElementById('view');
+    v.style.display = 'flex';
+    v.style.flexDirection = 'column';
+    v.style.flex = '1';
+    v.style.minHeight = '0';
+    await loadData(name);
+  }
+
+  /* ── Charger les données ──────────────────────────────────────────────── */
+  async function loadData(name) {
+    document.getElementById('content').innerHTML =
+      '<div class="state"><div class="spinner"></div><p>Chargement…</p></div>';
+    try {
+      const [rRows, rCols] = await Promise.all([
+        fetch(`/api/pg/${encodeURIComponent(name)}`),
+        fetch(`/api/pg/${encodeURIComponent(name)}/columns`),
+      ]);
+      allRows = await rRows.json();
+      columns = await rCols.json();
+      rowsMap = new Map(allRows.map(r => [String(r.id ?? r[Object.keys(r)[0]]), r]));
+      renderTable(allRows);
+    } catch {
+      document.getElementById('content').innerHTML =
+        '<div class="state"><p>Erreur lors du chargement des données.</p></div>';
+    }
+  }
+
+  /* ── Afficher le tableau ──────────────────────────────────────────────── */
+  function renderTable(rows) {
+    document.getElementById('rowBadge').textContent =
+      `${rows.length} ligne${rows.length !== 1 ? 's' : ''}`;
+
+    const el = document.getElementById('content');
+
+    if (!rows.length) {
+      el.innerHTML = `<div class="state">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+          <rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 21V9"/>
+        </svg>
+        <p>Cette table est vide.</p></div>`;
+      return;
+    }
+
+    const cols = Object.keys(rows[0]);
+
+    el.innerHTML = `<table>
+      <thead><tr>
+        ${cols.map(c => `<th>${esc(c)}</th>`).join('')}
+        <th></th>
+      </tr></thead>
+      <tbody>
+        ${rows.map(row => {
+          const pk = String(row.id ?? row[cols[0]]);
+          return `<tr>
+            ${cols.map(c => {
+              const v = row[c];
+              if (v === null || v === undefined)
+                return `<td><span class="null-v">null</span></td>`;
+              const s = String(v);
+              const mono = (c === 'id') || /^[0-9a-f-]{8,}$/i.test(s);
+              return `<td class="${mono ? 'mono' : ''}" title="${esc(s)}">${esc(trunc(s))}</td>`;
+            }).join('')}
+            <td>
+              <div class="row-acts">
+                <button class="btn btn-icon" title="Modifier" onclick="openEdit('${esc(pk)}')">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+                    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                  </svg>
+                </button>
+                <button class="btn btn-del" title="Supprimer" onclick="deleteRow('${esc(pk)}')">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <polyline points="3 6 5 6 21 6"/>
+                    <path d="M19 6l-1 14H6L5 6"/>
+                    <path d="M10 11v6M14 11v6M9 6V4h6v2"/>
+                  </svg>
+                </button>
+              </div>
+            </td>
+          </tr>`;
+        }).join('')}
+      </tbody>
+    </table>`;
+  }
+
+  /* ── Recherche ────────────────────────────────────────────────────────── */
+  document.getElementById('searchInput').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase();
+    renderTable(allRows.filter(row =>
+      Object.values(row).some(v => String(v ?? '').toLowerCase().includes(q))
+    ));
+  });
+
+  document.getElementById('refreshBtn').addEventListener('click', () => {
+    if (currentTable) loadData(currentTable);
+  });
+
+  /* ── Modal ────────────────────────────────────────────────────────────── */
+  function buildModal(title, row = null) {
+    editingId = row ? String(row.id ?? row[columns[0]?.column_name]) : null;
+    document.getElementById('modalTitle').textContent = title;
+    const body = document.getElementById('modalBody');
+    const editableCols = columns.filter(c => c.column_name !== 'id');
+    body.innerHTML = editableCols.map(col => {
+      const val = row ? (row[col.column_name] ?? '') : '';
+      const isLong = ['text', 'json', 'jsonb', 'xml'].some(t => col.data_type.includes(t));
+      return `<div class="field">
+        <label>${esc(col.column_name)}
+          <span class="type-hint">(${esc(col.data_type)})</span>
+        </label>
+        ${isLong
+          ? `<textarea id="f-${esc(col.column_name)}" placeholder="${esc(col.column_name)}">${esc(String(val))}</textarea>`
+          : `<input type="text" id="f-${esc(col.column_name)}" value="${esc(String(val))}" placeholder="${esc(col.column_name)}">`
+        }
+      </div>`;
+    }).join('');
+    document.getElementById('overlay').classList.add('open');
+    body.querySelector('input,textarea')?.focus();
+  }
+
+  function closeModal() {
+    document.getElementById('overlay').classList.remove('open');
+    editingId = null;
+  }
+
+  document.getElementById('addBtn').addEventListener('click', () =>
+    buildModal('Ajouter un enregistrement'));
+  document.getElementById('closeBtn').addEventListener('click', closeModal);
+  document.getElementById('cancelBtn').addEventListener('click', closeModal);
+  document.getElementById('overlay').addEventListener('click', e => {
+    if (e.target === e.currentTarget) closeModal();
+  });
+
+  function openEdit(pk) {
+    const row = rowsMap.get(pk);
+    if (!row) return;
+    buildModal("Modifier l'enregistrement", row);
+  }
+
+  /* ── Enregistrer ──────────────────────────────────────────────────────── */
+  document.getElementById('saveBtn').addEventListener('click', async () => {
+    const editableCols = columns.filter(c => c.column_name !== 'id');
+    const fields = {};
+    editableCols.forEach(col => {
+      const el = document.getElementById(`f-${col.column_name}`);
+      if (el && el.value !== '') fields[col.column_name] = el.value;
+    });
+
+    const url = editingId
+      ? `/api/pg/${encodeURIComponent(currentTable)}/${encodeURIComponent(editingId)}`
+      : `/api/pg/${encodeURIComponent(currentTable)}`;
+
+    try {
+      const res = await fetch(url, {
+        method: editingId ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(fields),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        toast(err.error || 'Erreur', 'error');
+        return;
+      }
+      toast(editingId ? 'Modifié avec succès' : 'Ajouté avec succès', 'success');
+      closeModal();
+      loadData(currentTable);
+    } catch {
+      toast('Erreur réseau', 'error');
+    }
+  });
+
+  /* ── Supprimer ────────────────────────────────────────────────────────── */
+  async function deleteRow(pk) {
+    if (!confirm('Supprimer cet enregistrement ?')) return;
+    try {
+      const res = await fetch(
+        `/api/pg/${encodeURIComponent(currentTable)}/${encodeURIComponent(pk)}`,
+        { method: 'DELETE' }
+      );
+      if (!res.ok) { toast('Erreur lors de la suppression', 'error'); return; }
+      toast('Enregistrement supprimé', 'success');
+      loadData(currentTable);
+    } catch {
+      toast('Erreur réseau', 'error');
+    }
+  }
+
+  /* ── Init ─────────────────────────────────────────────────────────────── */
+  loadTables();
+</script>
+</body>
+</html>
