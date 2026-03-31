@@ -37,6 +37,12 @@ async function setupPagesTable() {
         ('Gestion des pages', 'Ajoute, modifie et organise les pages visibles sur le dashboard.', '/pages-admin', '#6366f1', '#eef2ff', 'settings', 2)
       `);
     }
+    // Ajouter les pages manquantes (idempotent)
+    await pool.query(`
+      INSERT INTO pages (title, description, url, color, bg_color, icon, sort_order)
+      SELECT 'Horloge & Calendrier', 'Horloge analogique et calendrier mensuel.', '/clock.html', '#c8b560', '#fef9ec', 'clock', 3
+      WHERE NOT EXISTS (SELECT 1 FROM pages WHERE url = '/clock.html')
+    `);
     console.log('Table pages prête.');
   } catch (err) {
     console.error('Erreur setup pages:', err.message);
