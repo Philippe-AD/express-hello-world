@@ -58,6 +58,31 @@
     transition: opacity 0.35s ease;
   }
 
+  /* ── BACK BUTTON ───────────────────────────── */
+  .back-btn {
+    position: fixed;
+    top: 1.2rem;
+    left: 1.2rem;
+    z-index: 200;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    height: 40px;
+    padding: 0 14px;
+    border-radius: 11px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    font-family: 'DM Mono', monospace;
+    font-size: 12px;
+    text-decoration: none;
+    transition: color 0.2s, border-color 0.2s, background 0.35s;
+    box-shadow: 0 2px 12px var(--shadow);
+  }
+  .back-btn:hover { color: var(--accent); border-color: rgba(200,181,96,0.4); }
+  .back-btn svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
+
   /* ── SETTINGS BUTTON ─────────────────────── */
   .settings-btn {
     position: fixed;
@@ -385,6 +410,12 @@
 </style>
 </head>
 <body>
+
+<!-- ← Back button -->
+<a class="back-btn" href="/">
+  <svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+  Dashboard
+</a>
 
 <!-- ⚙ Settings button -->
 <button class="settings-btn" id="settingsBtn" title="Paramètres" onclick="toggleSettings()">
