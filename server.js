@@ -42,6 +42,9 @@ app.use((req, res, next) => {
   if (proto && proto !== "https") {
     return res.redirect(301, "https://" + req.headers.host + req.url);
   }
+  if (proto === "https") {
+    res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains");
+  }
   next();
 });
 
