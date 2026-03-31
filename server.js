@@ -12,6 +12,38 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
+// ── Initialisation automatique de la table pages ─────────────────────────────
+async function setupPagesTable() {
+  try {
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS pages (
+        id         SERIAL PRIMARY KEY,
+        title      TEXT NOT NULL,
+        description TEXT DEFAULT '',
+        url        TEXT NOT NULL,
+        color      TEXT DEFAULT '#3ecf8e',
+        bg_color   TEXT DEFAULT '#ecfdf5',
+        icon       TEXT DEFAULT 'globe',
+        active     BOOLEAN DEFAULT true,
+        sort_order INT DEFAULT 0,
+        created_at TIMESTAMPTZ DEFAULT NOW()
+      )
+    `);
+    const { rows } = await pool.query('SELECT COUNT(*) FROM pages');
+    if (parseInt(rows[0].count) === 0) {
+      await pool.query(`
+        INSERT INTO pages (title, description, url, color, bg_color, icon, sort_order) VALUES
+        ('Supabase Manager', 'Consulte, ajoute, modifie et supprime des enregistrements dans tes tables PostgreSQL.', '/supabase', '#3ecf8e', '#ecfdf5', 'database', 1),
+        ('Gestion des pages', 'Ajoute, modifie et organise les pages visibles sur le dashboard.', '/pages-admin', '#6366f1', '#eef2ff', 'settings', 2)
+      `);
+    }
+    console.log('Table pages prête.');
+  } catch (err) {
+    console.error('Erreur setup pages:', err.message);
+  }
+}
+setupPagesTable();
+
 // Vérifie que le nom de table est réel (anti-injection)
 async function isValidTable(name) {
   const r = await pool.query(
@@ -189,6 +221,80 @@ app.delete('/api/pg/:table/:id', requireAuth, async (req, res) => {
 });
 
 // ── Routes existantes ────────────────────────────────────────────────────────
+
+// ── Routes Pages dashboard ───────────────────────────────────────────────────
+
+app.get("/pages-admin", (req, res) =>
+  res.sendFile(path.join(__dirname, "public", "pages-admin.html"))
+);
+
+// Pages actives (public — utilisé par index.html)
+app.get('/api/pages', async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT * FROM pages WHERE active = true ORDER BY sort_order, id`
+    );
+    res.json(r.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Toutes les pages (admin)
+app.get('/api/pages/all', requireAuth, async (req, res) => {
+  try {
+    const r = await pool.query('SELECT * FROM pages ORDER BY sort_order, id');
+    res.json(r.rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Créer une page
+app.post('/api/pages', requireAuth, async (req, res) => {
+  try {
+    const { title, description, url, color, bg_color, icon, active, sort_order } = req.body;
+    if (!title || !url) return res.status(400).json({ error: 'title et url requis' });
+    const r = await pool.query(
+      `INSERT INTO pages (title, description, url, color, bg_color, icon, active, sort_order)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING *`,
+      [title, description || '', url, color || '#3ecf8e', bg_color || '#ecfdf5',
+       icon || 'globe', active !== false, parseInt(sort_order) || 0]
+    );
+    res.json(r.rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Modifier une page
+app.put('/api/pages/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { title, description, url, color, bg_color, icon, active, sort_order } = req.body;
+    if (!title || !url) return res.status(400).json({ error: 'title et url requis' });
+    const r = await pool.query(
+      `UPDATE pages SET title=$1, description=$2, url=$3, color=$4, bg_color=$5,
+       icon=$6, active=$7, sort_order=$8 WHERE id=$9 RETURNING *`,
+      [title, description || '', url, color || '#3ecf8e', bg_color || '#ecfdf5',
+       icon || 'globe', active !== false, parseInt(sort_order) || 0, id]
+    );
+    res.json(r.rows[0] ?? { message: 'Page introuvable' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Supprimer une page
+app.delete('/api/pages/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await pool.query('DELETE FROM pages WHERE id = $1', [id]);
+    res.json({ message: 'Page supprimée', id });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 app.get("/api/health", (req, res) => {
   res.json({
